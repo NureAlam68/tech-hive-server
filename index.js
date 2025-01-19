@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
@@ -69,10 +69,41 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/products/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id)};
+      const result = await productCollection.findOne(query);
+      res.send(result);
+    })
+
     app.post('/products', async(req, res) => {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
+    })
+
+    app.patch('/products/:id', async (req, res) => {
+      const data = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id)};
+      const updatedDoc = {
+        $set: {
+          productName: data.productName,
+          productImage: data.productImage,
+          description: data.description,
+          externalLink: data.externalLink,
+          tags: data.tags,
+        }
+      }
+      const result = await productCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
+
+    app.delete('/products/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id)};
+      const result = await productCollection.deleteOne(query);
+      res.send(result)
     })
 
 

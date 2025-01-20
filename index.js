@@ -54,8 +54,20 @@ async function run() {
         })
       }
 
+      // use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email};
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if(!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access'})
+      }
+      next();
+    }
+
       // user related api
-    app.get('/users', verifyToken, async(req, res) => {
+    app.get('/users', verifyToken, verifyAdmin, async(req, res) => {
       // console.log(req.headers)
       const result = await userCollection.find().toArray();
       res.send(result);
@@ -76,6 +88,21 @@ async function run() {
       res.send({ admin });
     })
 
+    app.get('/users/moderator/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if(email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access'})
+      }
+
+      const query = { email: email};
+      const user = await userCollection.findOne(query);
+      let moderator = false;
+      if(user) {
+        moderator = user?.role === 'moderator';
+      }
+      res.send({ moderator });
+    })
+
     app.post('/users', async(req, res) => {
       const user = req.body;
       const query = { email: user.email }
@@ -87,7 +114,7 @@ async function run() {
       res.send(result);
     })
 
-    app.patch('/users/admin/:id', async(req, res) => {
+    app.patch('/users/admin/:id',verifyToken, verifyAdmin, async(req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id)};
       const updatedDoc = {
@@ -99,7 +126,7 @@ async function run() {
       res.send(result);
     })
 
-    app.patch('/users/moderator/:id', async(req, res) => {
+    app.patch('/users/moderator/:id', verifyToken, verifyAdmin, async(req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id)};
       const updatedDoc = {

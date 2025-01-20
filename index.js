@@ -139,12 +139,25 @@ async function run() {
     })
 
     // product related apis
-    app.get('/products', async(req,res) => {
+    app.get('/products', async (req, res) => {
       const email = req.query.email;
-      const query = { email: email};
-      const result = await productCollection.find(query).toArray();
-      res.send(result)
-    })
+    
+      let query = {}; 
+    
+      if (email) {
+        query = { email: email }; 
+      }
+    
+      try {
+        const result = await productCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+    
+    
 
     app.get('/products/:id', async(req, res) => {
       const id = req.params.id;
@@ -175,6 +188,20 @@ async function run() {
       const result = await productCollection.updateOne(filter, updatedDoc);
       res.send(result)
     })
+
+    app.patch('/products/status/:id', async (req, res) => {
+      const { status, featured } = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateFields = {};
+    
+      if (status) updateFields.status = status;
+      if (featured !== undefined) updateFields.featured = featured;
+    
+      const updatedDoc = { $set: updateFields };
+      const result = await productCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
 
     app.delete('/products/:id', async(req, res) => {
       const id = req.params.id;

@@ -210,6 +210,63 @@ async function run() {
       res.send(result)
     })
 
+    app.get('/featured-products', async (req, res) => {
+      try {
+        const products = await productCollection
+          .find({ featured: true }) // Only featured products
+          .sort({ createdAt: -1 }) // Sort by latest
+          .limit(4)
+          .toArray();
+        res.send(products);
+      } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // Upvote Route
+app.patch("/upvote/:id", verifyToken, async (req, res) => {
+  const id = req.params.id;
+  const { email } = req.body;
+
+  // console.log("Upvote API Called for ID:", id, "By User:", email);
+
+  try {
+    const product = await productCollection.findOne({ _id: new ObjectId(id) });
+
+    if (!product) {
+      // console.log("Product Not Found!");
+      return res.status(404).send({ message: "Product not found" });
+    }
+
+    if (product.email === email) {
+      // console.log("User is trying to upvote own product!");
+      return res.status(403).send({ message: "You cannot upvote your own product" });
+    }
+
+    // Ensure `votedUsers` exists
+    const alreadyVoted = (product.votedUsers || []).includes(email);
+    if (alreadyVoted) {
+      // console.log("User has already voted!");
+      return res.status(400).send({ message: "You have already voted" });
+    }
+
+    const updateFields = {
+      $inc: { upvote: 1 },
+      $push: { votedUsers: email } // Store voter
+    };
+
+    const result = await productCollection.updateOne(
+      { _id: new ObjectId(id) },
+      updateFields
+    );
+
+    console.log("Upvote Success!", result);
+    res.send(result);
+  } catch (error) {
+    // console.error("Upvote Error:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });

@@ -264,25 +264,62 @@ async function run() {
       }
     });
 
-    // Report Product 
-    app.post("/report/:id", verifyToken, async (req, res) => {
-      const productId = req.params.id;
-      const { email } = req.body;
-
+    app.get("/reported-products", verifyToken, async (req, res) => {
       try {
-        const report = {
-          productId: new ObjectId(productId),
-          reportedBy: email,
-          createdAt: new Date(),
-        };
-
-        const result = await reportCollection.insertOne(report);
-        res.send(result);
+          const reports = await reportCollection.find().toArray();
+          res.send(reports);
       } catch (error) {
-        console.error("Error reporting product:", error);
-        res.status(500).send({ message: "Internal Server Error" });
+          res.status(500).send({ message: "Internal Server Error" });
       }
-    });
+  });
+  
+
+  // Report Product 
+  app.post("/report/:id", verifyToken, async (req, res) => {
+  const productId = req.params.id;
+  const { email } = req.body;
+
+  try {
+    const product = await productCollection.findOne({ _id: new ObjectId(productId) });
+
+    if (!product) {
+      return res.status(404).send({ message: "Product not found" });
+    }
+
+    const existingReport = await reportCollection.findOne({ productId: new ObjectId(productId), reportedBy: email });
+
+   if (existingReport) {
+    return res.status(400).send({ message: "You have already reported this product" });
+   }
+
+    const report = {
+      productId: new ObjectId(productId),
+      productName: product.productName, 
+      reportedBy: email,
+      createdAt: new Date(),
+    };
+
+    const result = await reportCollection.insertOne(report);
+    res.send(result);
+  } catch (error) {
+    // console.error("Error reporting product:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
+app.delete("/reported-products/:id", verifyToken, async (req, res) => {
+  const id = req.params.id;
+  try {
+      await productCollection.deleteOne({ _id: new ObjectId(id) });
+
+      await reportCollection.deleteOne({ productId: new ObjectId(id) });
+
+      res.send({ message: "Product deleted successfully" });
+  } catch (error) {
+      res.status(500).send({ message: "Failed to delete product" });
+  }
+});
+
 
     app.post("/products", async (req, res) => {
       const product = req.body;

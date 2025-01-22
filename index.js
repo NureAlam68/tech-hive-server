@@ -167,6 +167,37 @@ async function run() {
       }
     });
 
+    app.get("/accepted-products", async (req, res) => {
+      try {
+        const { page = 1, search = "" } = req.query;
+        const limit = 6;
+        const skip = (parseInt(page) - 1) * limit;
+    
+        let query = { status: "Accepted" };
+        if (search) {
+          query.tags = { $regex: search, $options: "i" }; 
+        }
+    
+        const products = await productCollection
+          .find(query)
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+    
+        const totalProducts = await productCollection.countDocuments(query);
+    
+        res.send({
+          products,
+          totalPages: Math.ceil(totalProducts / limit),
+          currentPage: parseInt(page),
+        });
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+    
+
     app.get("/products/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };

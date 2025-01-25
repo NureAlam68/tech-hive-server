@@ -477,6 +477,35 @@ app.post('/users/subscribe', async (req, res) => {
   res.send(result);
 });
 
+// Admin Statistics API
+app.get('/admin/statistics', async (req, res) => {
+  try {
+    // Fetch total counts for products
+    const totalProducts = await productCollection.estimatedDocumentCount();
+    const acceptedProducts = await productCollection.countDocuments({ status: "Accepted" });
+    const pendingProducts = await productCollection.countDocuments({ status: "Pending" });
+
+    // Fetch total reviews
+    const totalReviews = await reviewsCollection.estimatedDocumentCount();
+
+    // Fetch total users
+    const totalUsers = await userCollection.estimatedDocumentCount();
+
+    // Respond with the statistics
+    res.send({
+      totalProducts,
+      acceptedProducts,
+      pendingProducts,
+      totalReviews,
+      totalUsers,
+    });
+  } catch (error) {
+    console.error("Error fetching admin statistics:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(

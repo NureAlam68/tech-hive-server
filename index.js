@@ -30,6 +30,7 @@ async function run() {
     const userCollection = client.db("TechHiveDB").collection("users");
     const reviewsCollection = client.db("TechHiveDB").collection("reviews");
     const reportCollection = client.db("TechHiveDB").collection("reports");
+    const couponsCollection = client.db("TechHiveDB").collection("coupons");
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -503,6 +504,36 @@ app.get('/admin/statistics', async (req, res) => {
     console.error("Error fetching admin statistics:", error);
     res.status(500).send({ message: "Internal Server Error" });
   }
+});
+
+// Get all coupons
+app.get("/coupons", async (req, res) => {
+  const coupons = await couponsCollection.find().toArray();
+  res.send(coupons);
+});
+
+// Add a new coupon
+app.post("/coupons", async (req, res) => {
+  const coupon = req.body;
+  const result = await couponsCollection.insertOne(coupon);
+  res.send(result);
+});
+
+// Delete a coupon
+app.delete("/coupons/:id", async (req, res) => {
+  const id = req.params.id;
+  const result = await couponsCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+
+// Update a coupon
+app.put("/coupons/:id", async (req, res) => {
+  const id = req.params.id;
+  const updatedCoupon = {
+    $set: req.body,
+  };
+  const result = await couponsCollection.updateOne({ _id: new ObjectId(id) }, updatedCoupon);
+  res.send(result);
 });
 
 

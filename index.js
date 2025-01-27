@@ -328,12 +328,32 @@ app.delete("/reported-products/:id", verifyToken, async (req, res) => {
   }
 });
 
-
     app.post("/products", async (req, res) => {
       const product = req.body;
+      const userEmail = product.email;
+  
+      // Find user from the database
+      const user = await userCollection.findOne({ email: userEmail });
+  
+      // If user does not exist
+      if (!user) {
+          return res.status(404).send({ error: "User not found!" });
+      }
+  
+      // If the user is NOT subscribed, check if they have already added a product
+      if (!user.isSubscribed) {
+          const existingProduct = await productCollection.findOne({ email: userEmail });
+  
+          if (existingProduct) {
+              return res.status(403).send({ error: "You can add only one product. Upgrade to Membership for unlimited access." });
+          }
+      }
+  
+      // Add the product
       const result = await productCollection.insertOne(product);
       res.send(result);
-    });
+  });
+  
 
     app.patch("/products/:id", async (req, res) => {
       const data = req.body;

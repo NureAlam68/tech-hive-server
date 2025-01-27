@@ -449,21 +449,38 @@ app.delete("/reported-products/:id", verifyToken, async (req, res) => {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
-
-    // payment intent
-    app.post('/create-payment-intent', async(req, res) => {
-      const { amount } = req.body;
-      const amountInt = parseInt(amount * 100);
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInt,
-        currency: 'usd',
-        payment_method_types: ['card']
-      });
-      res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-    })
+    
+    app.post('/create-payment-intent', async (req, res) => {
+      let { amount, couponCode } = req.body;
+    
+      let discount = 0;
+      if (couponCode) {
+        const coupon = await couponsCollection.findOne({ code: couponCode });
+        if (coupon && new Date(coupon.expiryDate) > new Date()) {
+          discount = Number(coupon.discount);
+        }
+      }
+    
+      // Ensure final amount is at least $1 (Stripe requires a minimum)
+      const finalAmount = Math.max(100, parseInt((amount - discount) * 100));
+    
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: finalAmount,
+          currency: 'usd',
+          payment_method_types: ['card'],
+        });
+    
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+          discountApplied: discount,
+        });
+      } catch (error) {
+        console.error("Stripe Error:", error);
+        res.status(500).send({ message: "Payment processing failed!" });
+      }
+    });
+    
 
     // Update user's subscription status after payment
 app.post('/users/subscribe', async (req, res) => {
@@ -534,6 +551,25 @@ app.put("/coupons/:id", async (req, res) => {
   };
   const result = await couponsCollection.updateOne({ _id: new ObjectId(id) }, updatedCoupon);
   res.send(result);
+});
+
+app.post('/apply-coupon', async (req, res) => {
+  const { couponCode } = req.body;
+  
+  const coupon = await couponsCollection.findOne({ code: couponCode });
+
+  if (!coupon) {
+    return res.status(400).send({ message: "Invalid coupon code!" });
+  }
+
+  if (new Date(coupon.expiryDate) < new Date()) {
+    return res.status(400).send({ message: "Coupon has expired!" });
+  }
+
+  // Ensure discount is a number
+  const discount = Number(coupon.discount);  
+
+  res.send({ valid: true, discount });
 });
 
 

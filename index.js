@@ -189,7 +189,7 @@ async function run() {
 
     app.get("/accepted-products", async (req, res) => {
       try {
-        const { page = 1, search = "" } = req.query;
+        const { page = 1, search = "", sort = "desc" } = req.query;
         const limit = 6;
         const skip = (parseInt(page) - 1) * limit;
     
@@ -197,9 +197,12 @@ async function run() {
         if (search) {
           query.tags = { $regex: search, $options: "i" }; 
         }
+
+        const sortOption = sort === "asc" ? { upvote: 1 } : { upvote: -1 };
     
         const products = await productCollection
           .find(query)
+          .sort(sortOption)
           .skip(skip)
           .limit(limit)
           .toArray();
